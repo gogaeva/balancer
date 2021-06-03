@@ -2,15 +2,17 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
-	"github.com/roman-mazur/design-practice-2-template/httptools"
-	"github.com/roman-mazur/design-practice-2-template/signal"
+	"github.com/gogaeva/balancer/httptools"
+	"github.com/gogaeva/balancer/signal"
 )
 
 var (
@@ -29,6 +31,52 @@ var (
 		"server3:8080",
 	}
 )
+
+
+type Server struct {
+  Addr        string
+  Connections int
+  Alive       bool
+}
+
+type Balancer struct {
+  *sync.Mutex
+  servers []*Server
+}
+
+func (lb *Balancer) GetServer() (*Server, error) {
+  lb.Lock()
+  defer lb.Unlock()
+  var available []*Server
+  for _, server := range lb.servers {
+    if server.Alive {
+      available = append(available, server)
+    }
+  }
+  if len(available) == 0 {
+    return nil, errors.New("no server available")
+  }
+  min := available[0]
+  for _, next := range available {
+    if next.Connections < min.Connections {
+      min = next
+    }
+  }
+  return min, nil
+}
+
+func (lb *Balancer) SetServers(serverPool []string) {
+  for _, serverAddr := range serversPool {
+    server := &Server{serverAddr, 0, true}
+    lb.servers = append(lb.servers, server)
+  }
+}
+
+func NewBalancer(serverPool []string) *Balancer {
+  lb := &Balancer{new(sync.Mutex), []*Server{}}
+  lb.SetServers(serverPool)
+  return lb
+}
 
 func scheme() string {
 	if *https {
@@ -58,6 +106,7 @@ func forward(dst string, rw http.ResponseWriter, r *http.Request) error {
 	fwdRequest.URL.Host = dst
 	fwdRequest.URL.Scheme = scheme()
 	fwdRequest.Host = dst
+	fwdRequest.Header.Set("lb-author", r.RemoteAddr)
 
 	resp, err := http.DefaultClient.Do(fwdRequest)
 	if err == nil {
@@ -87,19 +136,24 @@ func forward(dst string, rw http.ResponseWriter, r *http.Request) error {
 func main() {
 	flag.Parse()
 
-	// TODO: Використовуйте дані про стан сервреа, щоб підтримувати список тих серверів, яким можна відправляти ззапит.
-	for _, server := range serversPool {
+	lb := NewBalancer(serversPool)
+	
+	for _, server := range lb.servers {
 		server := server
 		go func() {
 			for range time.Tick(10 * time.Second) {
-				log.Println(server, health(server))
+				availability := health(server.Addr)
+				log.Println(server.Addr, availability)
+				server.Alive = availability
 			}
 		}()
 	}
 
 	frontend := httptools.CreateServer(*port, http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		// TODO: Рееалізуйте свій алгоритм балансувальника.
-		forward(serversPool[0], rw, r)
+		server, _ := lb.GetServer()
+		server.Connections++
+		forward(server.Addr, rw, r)
+		server.Connections--
 	}))
 
 	log.Println("Starting load balancer...")

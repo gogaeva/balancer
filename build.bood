@@ -1,7 +1,6 @@
 go_binary {
   name: "server",
-  // TODO: Відкорегуйте ім'я пакета.
-  pkg: "github.com/roman-mazur/design-practice-2-template/cmd/server",
+  pkg: "github.com/gogaeva/balancer/cmd/server",
   srcs: [
     "httptools/**/*.go",
     "signal/**/*.go",
@@ -11,14 +10,14 @@ go_binary {
 
 go_binary {
   name: "lb",
-  // TODO: Відкорегуйте ім'я пакета.
-  pkg: "github.com/roman-mazur/design-practice-2-template/cmd/lb",
+  pkg: "github.com/gogaeva/balancer/cmd/lb",
   srcs: [
     "httptools/**/*.go",
     "signal/**/*.go",
     "cmd/lb/*.go"
-  ]
-  // TODO: Додайте запуск тестів для балансувальника.
+  ],
+  testPkg: "github.com/gogaeva/balancer/cmd/lb",
+  testSrcs: ["**/*_test.go"],
 }
 
 // TODO: Додайте модуль для інтеграційних тестів.
