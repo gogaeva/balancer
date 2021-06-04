@@ -1,0 +1,5 @@
+go_binary {
+    name: "integration",
+    testPkg: "github.com/gogaeva/balancer/integration",
+    testSrcs: ["**/*_test.go"],
+}

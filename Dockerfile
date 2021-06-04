@@ -2,7 +2,10 @@ FROM golang:1.15 as build
 
 RUN apt-get update && apt-get install -y ninja-build
 
-RUN go get -u github.com/gogaeva/build-system/build/cmd/bood
+WORKDIR /go/src
+RUN git clone https://github.com/gogaeva/build-system
+WORKDIR /go/src/build-system
+RUN go get -u ./build/cmd/bood
 
 WORKDIR /go/src/practice-2
 COPY . .
