@@ -16,15 +16,15 @@ import (
 )
 
 var (
-	port = flag.Int("port", 8090, "load balancer port")
+	port       = flag.Int("port", 8090, "load balancer port")
 	timeoutSec = flag.Int("timeout-sec", 3, "request timeout time in seconds")
-	https = flag.Bool("https", false, "whether backends support HTTPs")
+	https      = flag.Bool("https", false, "whether backends support HTTPs")
 
 	traceEnabled = flag.Bool("trace", false, "whether to include tracing information into responses")
 )
 
 var (
-	timeout = time.Duration(*timeoutSec) * time.Second
+	timeout     = time.Duration(*timeoutSec) * time.Second
 	serversPool = []string{
 		"server1:8080",
 		"server2:8080",
@@ -32,50 +32,50 @@ var (
 	}
 )
 
-
 type Server struct {
-  Addr        string
-  Connections int
-  Alive       bool
+	Addr        string
+	Connections int
+	Alive       bool
 }
 
 type Balancer struct {
-  *sync.Mutex
-  servers []*Server
+	*sync.Mutex
+	servers []*Server
 }
 
 func (lb *Balancer) GetServer() (*Server, error) {
-  lb.Lock()
-  defer lb.Unlock()
-  var available []*Server
-  for _, server := range lb.servers {
-    if server.Alive {
-      available = append(available, server)
-    }
-  }
-  if len(available) == 0 {
-    return nil, errors.New("no server available")
-  }
-  min := available[0]
-  for _, next := range available {
-    if next.Connections < min.Connections {
-      min = next
-    }
-  }
-  return min, nil
+	lb.Lock()
+	defer lb.Unlock()
+	var available []*Server
+	for _, server := range lb.servers {
+		if server.Alive {
+			available = append(available, server)
+		}
+	}
+	if len(available) == 0 {
+		return nil, errors.New("no server available")
+	}
+	min := available[0]
+	for _, next := range available {
+		next := next
+		if next.Connections < min.Connections {
+			min = next
+		}
+	}
+	return min, nil
 }
 
 func (lb *Balancer) SetServers(serverPool []string) {
-  for _, serverAddr := range serversPool {
-    server := &Server{serverAddr, 0, true}
-    lb.servers = append(lb.servers, server)
-  }
+	for _, serverAddr := range serversPool {
+		server := &Server{serverAddr, 0, true}
+		lb.servers = append(lb.servers, server)
+	}
 }
 
 func NewBalancer(serverPool []string) *Balancer {
-  lb := &Balancer{new(sync.Mutex), []*Server{}}
-  lb.SetServers(serverPool)
-  return lb
+	lb := &Balancer{new(sync.Mutex), []*Server{}}
+	lb.SetServers(serverPool)
+	return lb
 }
 
 func scheme() string {
@@ -99,7 +99,7 @@ func health(dst string) bool {
 	return true
 }
 
-func forward(dst string, rw http.ResponseWriter, r *http.Request) error {
+func forward(dst string, rw http.ResponseWriter, r *http.Request) {
 	ctx, _ := context.WithTimeout(r.Context(), timeout)
 	fwdRequest := r.Clone(ctx)
 	fwdRequest.RequestURI = ""
@@ -125,11 +125,9 @@ func forward(dst string, rw http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			log.Printf("Failed to write response: %s", err)
 		}
-		return nil
 	} else {
 		log.Printf("Failed to get response from %s: %s", dst, err)
 		rw.WriteHeader(http.StatusServiceUnavailable)
-		return err
 	}
 }
 
@@ -137,7 +135,7 @@ func main() {
 	flag.Parse()
 
 	lb := NewBalancer(serversPool)
-	
+
 	for _, server := range lb.servers {
 		server := server
 		go func() {
