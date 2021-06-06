@@ -4,9 +4,19 @@ networks:
   servers:
 
 services:
+  
+  database:
+    build: .
+    command: "db"
+    networks:
+      - servers
+    ports:
+      - "18080:18080"
 
   balancer:
     build: .
+    depends_on: 
+      - database
     command: "lb --trace"
     networks:
       - servers
@@ -15,6 +25,8 @@ services:
 
   server1:
     build: .
+    depends_on: 
+      - database
     networks:
       - servers
     ports:
@@ -22,6 +34,8 @@ services:
 
   server2:
     build: .
+    depends_on: 
+      - database
     networks:
       - servers
     ports:
@@ -29,6 +43,8 @@ services:
 
   server3:
     build: .
+    depends_on: 
+      - database
     networks:
       - servers
     ports:

@@ -12,6 +12,7 @@ services:
       - server2
       - server3
       - balancer
+      - database
     environment: 
       CONF_RESPONSE_DELAY_SEC: 2
 
